@@ -326,7 +326,11 @@ console.log(temp);// 1
 
   - 回调函数callback：
 
-    缺点：**回调地狱，不能用 try catch 捕获错误，不能 return**
+    缺点：
+
+    - **回调地狱**
+    - **不能用 try catch 捕获错误**
+    - **不能 return**
 
     ```js
     // 假定有两个函数f1和f2，后者等待前者的执行结果。
@@ -385,11 +389,160 @@ console.log(temp);// 1
     }
     ```
 
-- **setTimeout、Promise、Async/Await 的区别**
+- **你了解过Promise吗**
+
+  - Promise的出现是为了解决什么问题
+    - Promise是解决异步编程的一种方案。以前我们处理异步操作，一般都是通过回调函数来处理，会存在回调地域问题
+    - Promise的出现，能够让异步编程变得更加可观，把异步操作按照同步操作的流程表达出来，避免层层嵌套的回调函数。
+  - Promise的状态
+    - Promise对象有三种状态，进行中`pending`、完成成功`fulfilled`、失败`rejected`
+    - Promise的状态一旦确定了，就不会再更改了
+  - promise不足的地方
+    - 如果没有执行捕获错误的函数（如下述说的catch，then的第二个参数），则Promise内部发生的错误（虽然会报错但）是无法传递到Promise外部代码上的，因此外部脚本并不会因为错误而导致不继续执行下去。
+    - 一旦新建了，就无法中断它的操作。不像`setTimeout`那样，我还可以使用`clearTimeout`取消掉。
+  
+- <font color=red>**async/await 如何通过同步的方式实现异步**</font>
+
+  > https://segmentfault.com/a/1190000038985579
+
+  Async/Await就是一个**自执行**的generate函数。利用generate函数的特性把异步的代码写成“同步”的形式。
+
+  ```js
+  // Generator
+  run(function*() {
+    const res1 = yield Promise.resolve({a: 1});
+    console.log(res1);
+  
+    const res2 = yield Promise.resolve({b: 2});
+    console.log(res2);
+  });
+  
+  // async/await
+  const aa = async ()=>{
+    const res1 = await Promise.resolve({a: 1});
+    console.log(res1);
+
+    const res2 = await Promise.resolve({b: 2});
+  console.log(res2);
+  
+  return 'done'；
+  }
+const res = aa();
+  ```
+  
+  
+
+- <font color=red> **setTimeout、Promise、Async/Await 的区别**</font>
 
   - settimeout的回调函数放到宏任务队列里，等到执行栈清空以后执行；
-  - promise.then里的回调函数会放到相应宏任务的微任务队列里，等宏任务里面的同步代码执行完再执行；
+  - promise new的时候会立即执行里面的代码；promise.then里的回调函数会放到相应宏任务的微任务队列里，等宏任务里面的同步代码执行完再执行；
   - async函数表示函数里面可能会有异步方法，await后面跟一个表达式，async方法执行时，遇到await会立即执行表达式，然后把表达式后面的代码放到微任务队列里，让出执行栈让同步代码先执行。
+
+- promise、setTimeout的执行顺序
+
+  ```js
+  const promise = new Promise((resolve, reject) => {
+    console.log(1);
+    resolve(5);
+    console.log(2);
+  }).then(val => {
+    console.log(val);
+  });
+  
+  promise.then(() => {
+    console.log(3);
+  });
+  
+  console.log(4);
+  
+  setTimeout(function() {
+    console.log(6);
+  });
+  // 执行结果: 124536
+  ```
+
+- **用 setTimeout 实现 setInterval，阐述实现的效果与 setInterval 的差异**
+
+  ```js
+  // 不能清除计时器
+  var mySetInterval = function(){
+    // arguments[0]为function，arguments[1]为间隔毫秒数
+    const args = arguments;
+    const timer = setTimeout(() => {
+      args[0]();
+      // callee属性是一个指针，指向拥有这个arguments对象的函数，即mySetInterval
+      args.callee(...args);
+    }, args[1]);
+    return timer;
+  };
+  
+  var time = mySetInterval(()=> {
+    console.log(1);
+  },1000);
+  ```
+
+  ```js
+  function mySetInterval() {
+    mySetInterval.timer = setTimeout(() => {
+      arguments[0]()
+      mySetInterval(...arguments)
+    }, arguments[1])
+  }
+  
+  mySetInterval.clear = function() {
+    clearTimeout(mySetInterval.timer)
+  }
+  
+  mySetInterval(() => {
+    console.log(11111)
+  }, 1000)
+  
+  setTimeout(() => {
+    // 5s 后清理
+    mySetInterval.clear()
+  }, 5000)
+  ```
+
+- **promise实现ajax**
+
+  > XMLHttpRequest：
+  >
+  > 1. onreadystatechange事件：每次readystate发生变化就会被调用一次
+  > 2. readystate属性：0—请求未初始化；1—请求已建立链接；2—请求已接收；3—请求处理中；4—请求已完成
+  > 3. status属性：200—"OK"；404—"未找到页面"
+
+  ```JS
+  const ajax = (method, url, data) => {
+    	// 将data对象转化为&拼接的键值对字符串
+    	data = transfer(data);
+      let request = new XMLHttpRequest();
+      return new Promise((resolve, reject) => {
+          request.onreadystatechange = () => {
+              if(request.readyState === 4) {
+                  if(request.status === 200) {
+                      resolve(request.responseText);
+                  } else {
+                      reject(request.status);
+                  }
+              }
+          }
+          if(method === 'get'){
+            request.open(method, url+'?'+ data, true);
+            request.send(data);
+          }else{
+            request.open(method, url, true);
+            request.send(data);
+          }
+      });
+  }
+  ajax('GET', '/api/categories').then(function (text) {   // 如果AJAX成功，获得响应内容
+      log.innerText = text;
+  }).catch(function (status) { // 如果AJAX失败，获得响应代码
+      log.innerText = 'ERROR: ' + status;
+  });
+  ```
+
+- 
 
 ### 事件循环
 
