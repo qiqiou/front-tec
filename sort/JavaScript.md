@@ -1,4 +1,4 @@
-## JS基础
+# JS基础
 
 ## 1. 闭包
 
@@ -68,9 +68,34 @@ Function.prototype.bind_ = function (obj) {
     bound.prototype = new fn_();
     return bound;
 };
+
+Function.prototype.myBind = (context = window) => {
+    if (typeof this != 'function') {
+        throw new TypeError('error');
+    }
+    const _this = this;
+    let args = [...arguments].slice(1);
+    return function F() {
+        if (this instanceof F){
+            return new _this(...args, ...arguments);
+        }
+
+        return _this.apply(context, args.concat(arguments));
+    }
+}
 ```
 
-### 2.4 function与箭头函数的区别
+### 2.4 new 模拟实现
+
+```js
+const _new(fn, ...args){
+  const obj = Object.create(fn.prototype);
+  const ret = fn.apply(obj, args);
+  return ret instanceof Object ? ret : obj;
+}
+```
+
+### 2.5 function与箭头函数的区别
 
 1. function可以显式命名，箭头函数是隐式命名
 2. 箭头函数没有prototype属性，不能使用new关键词，不能写成构造函数
@@ -84,43 +109,70 @@ Function.prototype.bind_ = function (obj) {
 
 ```js
 function Person() {}
+// var Person = {
+//   prototype: {
+//     // Person
+//     constructor: function(){}
+//   }
+// }
 Person.prototype.name = "ccc";
 Person.prototype.age = 18;
 Person.prototype.sayName = function() {
   console.log(this.name);
 };
 
-// 等同于
-/* var Person = {
-*  prototype: {
-*    name: "ccc",
-*    age: 18,
-*    constructor() {},
-*    sayName: function() {
-*      console.log(this.name);
-*    }
-*  }
-*}
-*/
+// var Person = {
+//   prototype: {
+//     name: "ccc",
+//     age: 18,
+//     // Person
+//     constructor: function(){},
+//     sayName: function(){
+//       console.log(this.name);
+//     }
+//   }
+// }
 
 var person1 = new Person();
 var person2 = new Person();
 
-person1.name = 'www'      // 在person1中添加一个name属性
+// var person1 = {
+//   prototype: {
+//     name: "ccc",
+//     age: 18,
+//     // Person
+//     constructor: function(){},
+//     sayName: function(){
+//       console.log(this.name);
+//     }
+//   }
+// }
 
-// person1的原型
-/* Person = {
-*		name: 'www',
-* 	prototype: {
-*    	name: "ccc",
-*    	age: 18,
-*    	constructor() {},
-*    	sayName: function() {
-*     	 console.log(this.name);
-*    	}
-*  	}
-*	}
-*/
+// var person2 = {
+//   prototype: {
+//     name: "ccc",
+//     age: 18,
+//     // Person
+//     constructor: function(){},
+//     sayName: function(){
+//       console.log(this.name);
+//     }
+//   }
+// }
+
+person1.name = 'www'      // 在person1中添加一个name属性
+// var person1 = {
+//   name: 'www',
+//   prototype: {
+//     name: "ccc",
+//     age: 18,
+//     // Person
+//     constructor: function(){},
+//     sayName: function(){
+//       console.log(this.name);
+//     }
+//   }
+// }
 
 person1.sayName()      // --> 'www'————'来自实例'
 person2.sayName()      // --> 'ccc'————'来自原型'
@@ -130,23 +182,23 @@ console.log(person2.hasOwnProperty('name'))      // --> false
 
 delete person1.name      // --> 删除person1中新添加的name属性
 
-// person1的原型
-/* Person = {
-* 	prototype: {
-*    	name: "ccc",
-*    	age: 18,
-*    	constructor() {},
-*    	sayName: function() {
-*     	 console.log(this.name);
-*    	}
-*  	}
-*	}
-*/
+// var person1 = {
+//   prototype: {
+//     name: "ccc",
+//     age: 18,
+//     // Person
+//     constructor: function(){},
+//     sayName: function(){
+//       console.log(this.name);
+//     }
+//   }
+// }
 person1.sayName()      // -->'ccc'————'来自原型'
-
 ```
 
 ### 3.2 prototype和\_proto\_的关系
+
+> **JavaScript** 中任意对象都有一个内置属性 **[[Prototype]]** ，支持通过`__proto__`来访问
 
 ```js
 function Parent() {
@@ -157,14 +209,16 @@ Parent.prototype.getName = function () {
 };
 
 // Parent = {
-//     prototype: {
-//         constructor: function(){
-//             this.name = "parent";
-//         },
-//         getName: function () {
-//             return this.name;
-//         }
+//   name: "parent",
+//   prototype: {
+//     // Parent
+//     constructor: function(){
+//       this.name = "parent";
 //     },
+//     getName: function () {
+//       return this.name;
+//     }
+//   },
 // }
 
 function Children(name) {
@@ -172,29 +226,35 @@ function Children(name) {
 }
 
 // Children = {
-//     prototype: {
-//         constructor: function(){
-//             this.cName = "children";
-//         }
-//     }
+//   cName: "children",
+//   prototype: {
+//       // Children
+//       constructor: function(){
+//           this.cName = "children";
+//       }
+//   }
 // }
 
 // 通过原型链实现继承Children.prototype.__proto__ === Parent.prototype
 Children.prototype = new Parent();
 // Children = {
-//     prototype: {
-//         constructor: function(){
-//             this.cName = "children";
-//         },
-//         __proto__: {
-//             constructor: function(){
-//                 this.name = "parent";
-//             },
-//             getName: function () {
-//                 return this.name;
-//             }
-//         }
+//   cName: "children",
+//   prototype: {
+//     // Children
+//     constructor: function(){
+//         this.cName = "children";
+//     },
+//     __proto__: {
+//       name: "parent",
+//       // Parent
+//       constructor: function(){
+//           this.name = "parent";
+//       },
+//       getName: function () {
+//           return this.name;
+//       }
 //     }
+//   }
 // }
 
 
@@ -204,29 +264,228 @@ Children.prototype.getName = function () {
 };
 
 // Children = {
-//     prototype: {
-//         constructor: function(){
-//             this.cName = "children";
-//         },
-//         getName: function() {
-//             return this.cName;
-//         },
-//         __proto__: {
-//             constructor: function(){
-//                 this.name = "parent";
-//             },
-//             getName: function () {
-//                 return this.name;
-//             }
-//         }
+//   cName: "children",
+//   prototype: {
+//     // Children
+//     constructor: function(){
+//         this.cName = "children";
+//     },
+//     getName: function () {
+//       return this.cName;
+//     },
+//     __proto__: {
+//       name: "parent",
+//       // Parent
+//       constructor: function(){
+//           this.name = "parent";
+//       },
+//       getName: function () {
+//           return this.name;
+//       }
 //     }
+//   }
 // }
 
 var c = new Children();
 console.log(c.getName()); //children
 ```
 
+### 3.3 JS继承的实现方式
 
+> https://www.cnblogs.com/humin/p/4556820.html
+
+- 原型链继承： 将父类的实例作为子类的原型
+
+  - 缺点：
+    - 要想为子类新增属性和方法，必须要在`new Animal()`这样的语句之后执行，不能放到构造器中
+    - 无法实现多继承
+    - 来自原型对象的所有属性被所有实例共享
+    - 创建子类实例时，无法向父类构造函数传参
+
+  ```js
+  function Animal(name){
+    this.name = name || 'animal';
+    this.sleep = function(){
+      console.log(this.name + ' is sleeping');
+    }
+  }
+  
+  Animal.prototype.eat = function(food){
+     console.log(this.name + ' eat ' + food);
+  }
+  
+  // const Animal = {
+  //   prototype: {
+  //     constructor: function(name){
+  //       this.name = name || 'animal';
+  //     },
+  //     sleep: function(){
+  //       console.log(this.name + 'is sleeping');
+  //     },
+  //     eat: function(food){
+  //       console.log(this.name + ' eat ' + food);
+  //     }
+  //   }
+  // }
+  
+  
+  function Cat(){}
+  
+  Cat.prototype = new Animal();
+  Cat.prototype.name = 'cat';
+  
+  // const Cat = {
+  //   prototype: {
+  //     constructor: function(){},
+  //     name: 'cat',
+  //     _proto_: {
+  //       constructor: function(name){
+  //         this.name = name || 'animal';
+  //       },
+  //       sleep: function(){
+  //         console.log(this.name + 'is sleeping');
+  //       },
+  //       eat: function(food){
+  //         console.log(this.name + ' eat ' + food);
+  //       }
+  //     }
+  //   }
+  // }
+  
+  var cat = new Cat();
+  console.log(cat.name); // cat
+  console.log(cat.eat('fish')); // cat eat fish
+  console.log(cat.sleep()); // cat is sleeping
+  console.log(cat instanceof Animal); //true 
+  console.log(cat instanceof Cat); //true 
+  ```
+
+- 构造继承：使用父类的构造函数来增强子类实例，等于是复制父类的实例属性给子类
+
+  - 特点：
+    - 解决了子类实例共享父类引用属性的问题
+    - 创建子类实例时，可以向父类传递参数
+    - 可以实现多继承（call多个父类对象）
+  - 缺点：
+    - 实例并不是父类的实例，只是子类的实例
+    - 只能继承父类的实例属性和方法，不能继承原型属性/方法
+    - 无法实现函数复用，每个子类都有父类实例函数的副本，影响性能
+
+  ```js
+  function Cat(name){
+    Animal.call(this);
+    this.name = 'cat';
+  }
+  
+  var cat = new Cat();
+  console.log(cat.name); // cat
+  // console.log(cat.eat('fish')); // 会报错，Uncaught TypeError: cat.eat is not a function
+  console.log(cat.sleep()); // cat is sleeping
+  console.log(cat instanceof Animal); //false 
+  console.log(cat instanceof Cat); //true 
+  ```
+
+- 实例继承：为父类实例添加新特性，作为子类实例返回
+
+  - 特点：
+    - 不限制调用方式，不管是`new 子类()`还是`子类()`,返回的对象具有相同的效果
+  - 缺点：
+    - 实例是父类的实例，不是子类的实例
+    - 不支持多继承
+
+  ```js
+  function Cat(name){
+    const instance = new Animal();
+    instance.name = 'cat';
+    return instance;
+  }
+  
+  var cat = new Cat();
+  console.log(cat.name); // cat
+  console.log(cat.sleep()); // cat is sleeping
+  console.log(cat instanceof Animal); // true
+  console.log(cat instanceof Cat); // false
+  ```
+
+- 拷贝继承
+
+  - 特点：
+    1. 支持多继承
+  - 缺点：
+    1. 效率较低，内存占用高（因为要拷贝父类的属性）
+    2. 无法获取父类不可枚举的方法（不可枚举方法，不能使用for in 访问到）
+
+  ```js
+  function Cat(name){
+    var animal = new Animal();
+    for(var p in animal){
+      Cat.prototype[p] = animal[p];
+    }
+    this.name = name || 'Tom';
+  }
+  
+  // Test Code
+  var cat = new Cat();
+  console.log(cat.name);
+  console.log(cat.sleep());
+  console.log(cat instanceof Animal); // false
+  console.log(cat instanceof Cat); // true
+  ```
+
+- 组合继承：通过调用父类构造，继承父类的属性并保留传参的优点，然后通过将父类实例作为子类原型，实现函数复用
+
+  - 特点：
+    1. 可以继承实例属性/方法，也可以继承原型属性/方法
+    2. 既是子类的实例，也是父类的实例
+    3. 不存在引用属性共享问题
+    4. 可传参
+    5. 函数可复用
+  - 缺点：
+    1. 调用了两次父类构造函数，生成了两份实例（子类实例将子类原型上的那份屏蔽了）
+
+  ```js
+  function Cat(name){
+    Animal.call(this);
+    this.name = name || 'Tom';
+  }
+  Cat.prototype = new Animal();
+  Cat.prototype.constructor = Cat;
+  
+  // Test Code
+  var cat = new Cat();
+  console.log(cat.name);
+  console.log(cat.sleep());
+  console.log(cat instanceof Animal); // true
+  console.log(cat instanceof Cat); // true
+  
+  ```
+
+- 寄生组合继承：通过寄生方式，砍掉父类的实例属性，这样，在调用两次父类的构造的时候，就不会初始化两次实例方法/属性，避免的组合继承的缺点
+
+  ```js
+  function Cat(name){
+    Animal.call(this);
+    this.name = name || 'Tom';
+  }
+  Cat.prototype.constructor = Cat; // 需要修复下构造函数
+  
+  (function(){
+    // 创建一个没有实例方法的类
+    var Super = function(){};
+    Super.prototype = Animal.prototype;
+    //将实例作为子类的原型
+    Cat.prototype = new Super();
+  })();
+  
+  // Test Code
+  var cat = new Cat();
+  console.log(cat.name);
+  console.log(cat.sleep());
+  console.log(cat instanceof Animal); // true
+  console.log(cat instanceof Cat); //true
+  ```
+
+  
 
 ## 4. 作用域链
 
@@ -459,7 +718,69 @@ const res = aa();
     console.log(6);
   });
   // 执行结果: 124536
+  
+  
+  console.log("script start");
+  async function async1() {
+    await async2();
+    console.log("async1 end");
+  }
+  async function async2() {
+    console.log("async2 end");
+  }
+  async1();
+  setTimeout(function () {
+    console.log("setTimeout");
+  }, 0);
+  new Promise(resolve => {
+    console.log("Promise");
+    resolve();
+  })
+    .then(function () {
+      console.log("promise1");
+    })
+    .then(function () {
+      console.log("promise2");
+    });
+  console.log("script end");
+  //script start / async2 end / promise / script end/  async1 end / promise1 / promise2 / setTimeout
+  
+  
+  
+  function wait() {
+  	return new Promise(resolve =>
+  		setTimeout(resolve, 10 * 1000)
+  	)
+  }
+  
+  async function main() {
+  	console.time();
+  	const x = await wait(); // 每个都是都执行完才结,包括setTimeout（10*1000）的执行时间
+  	const y = await wait(); // 执行顺序 x->y->z 同步执行，x 与 setTimeout 属于同步执行
+  	const z = await wait();
+  	console.timeEnd(); // default: 30099.47705078125ms
+  	
+  	console.time();
+  	const x1 = wait(); // x1,y1,z1 同时异步执行， 包括setTimeout（10*1000）的执行时间
+  	const y1 = wait(); // x1 与 setTimeout 属于同步执行
+  	const z1 = wait();
+  	await x1;
+  	await y1;
+  	await z1;
+  	console.timeEnd(); // default: 10000.67822265625ms
+  	
+  	console.time();
+  	const x2 = wait(); // x2,y2,z2 同步执行，但是不包括setTimeout（10*1000）的执行时间
+  	const y2 = wait(); // x2 与 setTimeout 属于异步执行
+  	const z2 = wait();
+  	x2,y2,z2;
+  	console.timeEnd(); // default: 0.065185546875ms
+  }
+  main();
+  
   ```
+
+​	
 
 ### 6.5 **用 setTimeout 实现 setInterval，阐述实现的效果与 setInterval 的差异**
 
@@ -542,7 +863,200 @@ ajax('GET', '/api/categories').then(function (text) {   // 如果AJAX成功，�
 });
 ```
 
+### 6.7 async function A() { return 1 }，当我们调用 A 的时候，返回结果是什么
 
+async函数一定会返回一个promise对象。如果一个async函数的返回值看起来不是promise，那么它将会被隐式地包装在一个promise中。
+
+```js
+async function A() { 
+  return 1;
+}
+
+// 等价于
+async function A() { 
+  return new Promise.resolve(1); 
+}
+```
+
+### 6.8 实现一个 sleep 函数,比如 sleep(1000) 意味着等待1000毫秒
+
+1. Promise
+
+   ```js
+   const sleep = function(time){
+     return new Promise(resolve => setTimeout(resolve, time));
+   }
+   
+   sleep(1000).then(() => {
+     console.log(1);
+   });
+   ```
+
+2. Generator
+
+   ```js
+   function* sleep(time){
+     yield new Promise(resolve => setTimeout(resolve, time));
+   }
+   
+   sleep(1000).next().value.then(() => {
+     console.log(1);
+   });
+   ```
+
+3. async
+
+   ```js
+   function sleep(time){
+     return new Promise(resolve => setTimeout(resolve, time));
+   }
+   
+   async function output(){
+     await sleep(1000);
+     console.log(1);
+   }
+   
+   output();
+   ```
+
+4. setTimeout
+
+   ```js
+   function sleep(func, time){
+     setTimeout(func, time);
+   }
+   sleep(() => {
+     console.log(1);
+   }, 1000);
+   ```
+
+   
+
+
+### 6.9 介绍下 Promise.all 使用、原理实现及错误处理
+
+- Promise.all 使用：
+
+  - Promise.all方法接受一个数组作为参数，p1、p2、p3都是 Promise 实例，如果不是，就会先调用下面讲到的Promise.resolve方法，将参数转为 Promise 实例，再进一步处理。
+  - Promise.all方法的参数可以不是数组，但必须具有 Iterator 接口，且返回的每个成员都是 Promise 实例。
+  - 使用Promise.all()生成的Promise对象（p）的状态是由数组中的Promise对象（p1,p2,p3）决定
+    - 如果所有的Promise对象都变成fullfilled状态的话，生成的Promise对象（p）也会变成fullfilled状态，产生的结果会组成一个数组返回给传递给p的回调函数；
+    - 如果有一个Promise对象变为rejected状态的话，p也会变成rejected状态，第一个被rejected的对象的返回值会传递给p的回调函数。
+
+- **原理实现（实现一个 Promise.all）**：
+
+  ```js
+  function promiseAll(promises){
+       return new Promise(function(resolve,reject){
+              if(!Array.isArray(promises)){
+               return reject(new TypeError("argument must be anarray"))
+             }
+      var countNum=0;
+      var promiseNum=promises.length;
+      var resolvedvalue=new Array(promiseNum);
+      for(var i=0;i<promiseNum;i++){
+        (function(i){
+           Promise.resolve(promises[i]).then(function(value){
+              countNum++;
+             resolvedvalue[i]=value;
+            if(countNum===promiseNum){
+                return resolve(resolvedvalue)
+            }
+         },function(reason){
+          return reject(reason)
+        )
+       })(i)
+      }
+  })
+  }
+  var p1=Promise.resolve(1),
+  p2=Promise.resolve(2),
+  p3=Promise.resolve(3);
+  promiseAll([p1,p2,p3]).then(function(value){
+  	console.log(value)
+  });
+  ```
+
+- 错误处理
+
+  Promise.all()方法生成的Promise对象也会有一个catch方法来捕获错误处理，但是如果数组中的Promise对象变成rejected状态时，并且这个对象还定义了catch的方法，那么rejected的对象会执行自己的catch方法，并且返回一个状态为fullfilled的Promise对象，Promise.all()生成的对象会接受这个Promise对象，不会返回rejected状态。
+
+### 6.10 函数实现`arr`的串行调用
+
+- 题目：写一个函数实现`arr`的串行调用，让`arr`依次输出run1/run2/run3。必须按照`arr`的顺序执行，需要用`Promise`的状态去实现先后顺序（`resolve`或者`reject`函数执行状态改变后才能执行下一个）
+
+  ```js
+  let arr = [()=>{
+  	return new Promise(res=>{
+  		console.log("run1", Date.now());
+  		res()
+  	})
+  },()=>{
+  	return new Promise(res=>{
+  		console.log("run2", Date.now());
+  		res()
+  	})
+  },()=>{
+  	return new Promise(res=>{
+  		console.log("run3", Date.now());
+  		res()
+  	})
+  }];
+  ```
+
+- 题解
+
+  - 使用async
+
+    ```js
+    async function p(arr){
+      // 遍历arr用for循环并没有用forEach。因为forEach里就是另一个函数隔开了外层的async函数，
+        for(let v of arr){
+            await v;
+        }
+    }
+    ```
+
+  - 利用`Promise.resolve()`
+
+    ```js
+    function p(arr){
+        let res = Promise.resolve();
+        arr.forEach( v => {
+    		res = res.then(() => v());
+        });
+    }
+    ```
+
+  - 利用`reduce`函数的性质
+
+    ```js
+    function p(arr){
+        arr.reduce( (pre, cur) => {
+    		return pre.then(() => cur())
+        }, Promise.resolve());
+    }
+    ```
+
+    
+
+### 6.11 设计并实现 Promise.race()
+
+Promse.race就是赛跑的意思，意思就是说，Promise.race([p1, p2, p3])里面哪个结果获得的快，就返回那个结果，不管结果本身是成功状态还是失败状态。
+
+```js
+const _race = (p)=>{
+	return new Promise((resolve, reject)=>{
+		p.forEach((item)=>{
+			Promise.resolve(item).then(resolve, reject)
+		})
+	})
+}
+```
+
+### 6.12  <font color=red>手写实现Promise</font>
+
+> https://juejin.cn/post/6844903625769091079
 
 ## 7. 事件循环
 
@@ -611,6 +1125,130 @@ ajax('GET', '/api/categories').then(function (text) {   // 如果AJAX成功，�
 ### 8.5 自执行函数（IIFE）的作用是什么
 
 - 放在 IIFE 里面的变量，并不会影响到其他外层的变量，也不会被外层的变量影响。
+
+### 8.6 <font color=red>如何实现一个深拷贝</font>
+
+```js
+var isObject = obj => {
+    return (typeof obj === 'object' || typeof obj === 'function') && obj != null;
+}
+const deepClone = (obj, hash = new Map()) => {
+    if (!isObject(obj))
+        return obj;
+    if (hash.has(obj))
+        return hash.get(obj);
+    var target = Array.isArray(obj) ? [] : {};
+    hash.set(obj, target);
+    reflect.ownKeys(obj).foreach(key => {
+        target[key] = isObject(obj[key]) ? deepClone(obj[key], hash) : obj[key];
+    })
+    return target;
+}
+
+// 复杂版本
+const clone = parent => {
+  // 判断类型
+  const isType = (obj, type) => {
+    if (typeof obj !== "object") return false;
+    const typeString = Object.prototype.toString.call(obj);
+    let flag;
+    switch (type) {
+      case "Array":
+        flag = typeString === "[object Array]";
+        break;
+      case "Date":
+        flag = typeString === "[object Date]";
+        break;
+      case "RegExp":
+        flag = typeString === "[object RegExp]";
+        break;
+      default:
+        flag = false;
+    }
+    return flag;
+  };
+
+  // 处理正则
+  const getRegExp = re => {
+    var flags = "";
+    if (re.global) flags += "g";
+    if (re.ignoreCase) flags += "i";
+    if (re.multiline) flags += "m";
+    return flags;
+  };
+  // 维护两个储存循环引用的数组
+  const parents = [];
+  const children = [];
+
+  const _clone = parent => {
+    if (parent === null) return null;
+    if (typeof parent !== "object") return parent;
+
+    let child, proto;
+
+    if (isType(parent, "Array")) {
+      // 对数组做特殊处理
+      child = [];
+    } else if (isType(parent, "RegExp")) {
+      // 对正则对象做特殊处理
+      child = new RegExp(parent.source, getRegExp(parent));
+      if (parent.lastIndex) child.lastIndex = parent.lastIndex;
+    } else if (isType(parent, "Date")) {
+      // 对Date对象做特殊处理
+      child = new Date(parent.getTime());
+    } else {
+      // 处理对象原型
+      proto = Object.getPrototypeOf(parent);
+      // 利用Object.create切断原型链
+      child = Object.create(proto);
+    }
+
+    // 处理循环引用
+    const index = parents.indexOf(parent);
+
+    if (index != -1) {
+      // 如果父数组存在本对象,说明之前已经被引用过,直接返回此对象
+      return children[index];
+    }
+    parents.push(parent);
+    children.push(child);
+
+    for (let i in parent) {
+      // 递归
+      child[i] = _clone(parent[i]);
+    }
+
+    return child;
+  };
+  return _clone(parent);
+};
+```
+
+### 8.7  <font color=red>实现双向数据绑定</font>
+
+```js
+<body>
+  <input type="text" id="message" />
+  <div id="msg"></div>
+</body>
+<script>
+   var input=document.getElementById('message');
+   var show=document.getElementById('msg');
+   var obj={};
+   Object.defineProperty(obj,'data',{
+     get:function(){
+       return obj;
+     },
+     set:function(newValue){
+        input.value=newValue;
+        show.innerText=newValue;
+     }
+   })
+   input.addEventListener('keyup',function(e){
+     show.innerText=e.target.value;
+   })
+</script>
+```
 
 
 
