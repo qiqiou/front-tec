@@ -4044,11 +4044,251 @@ obj.time // 35
 
 ## 10. 设计模式
 
-### 10.1 $emit和$on是什么设计模式
+### 10.1 单例模式
 
-发布订阅模式
+#### 定义
 
-### 10.2 说说其他设计模式
+单例模式：保证一个类仅有一个实例，并提供一个访问它的全局访问点。
+
+#### 应用场景
+
+自定义弹窗
+
+Vuex：实现了一个全局的store用来存储应用的所有状态。这个store的实现就是单例模式的典型应用。
+
+#### 代码实现
+
+```js
+const Person = (function(){
+  function Persion(name){
+    this.name = name;
+  }
+  
+  Person.prototype.sayHi = function(){
+    console.log('hello world');
+  }
+  
+  let instance = null;
+  return function SingleTon(name){
+    if(!instance){
+      instance = new Persion(name);
+    }
+    
+    return instance;
+  }
+})();
+```
+
+### 10.2 策略模式
+
+#### 定义
+
+策略模式：定义一系列算法，把他们一个一个封装起来，并且使他们可以相互替换。
+
+一个问题匹配多个解决方案，不一定要用到哪一个，而且有可能随时还会继续添加新方案
+
+#### 应用场景
+
+计算奖金、购物车结算
+
+#### 代码实现
+
+```js
+const calcPrice = (function(){
+  let sale = {
+    '100_10': function(price){
+      return parseInt(price / 100) * 90 + price % 100;
+    },
+    '200_25': function(price){
+      return parseInt(price / 200) * 87.5 + price % 200;
+    },
+    '80%': function(price){
+      return price * 0.8;
+    }
+  };
+  
+  const calcPrice = function(type, price){
+    if(!sale[type]){
+      console.log('没有该折扣')
+      return;
+    }
+    
+    return sale[type](price);
+  };
+  
+  calcPrice.add = function(type, fn){
+    if(sale[type]){
+      console.log('该折扣已存在');
+      return;
+    }
+    
+    sale[type] = fn;
+    console.log('折扣已添加');
+  };
+  
+  calcPrice.del = function(type){
+    delete sale[type];
+  }
+  
+  
+  return calcPrice;
+})();
+```
+
+### 10.3 观察者模式
+
+#### 定义
+
+观察者模式：一个对象维持一系列依赖于它的对象，将有关状态的任何变更自动通知给它们（观察者）。
+
+#### 应用
+
+监控，同学是被观察者，老师是观察者
+
+#### 代码实现
+
+```js
+// 观察者
+class Observer {
+  constructor(name, fn){
+    this.name = name;
+    this.fn = fn;
+  }
+}
+
+const teacher = new Observer('老师', function(state){
+  console.log('把你的家长找来');
+});
+
+const leader = new Observer('校长', function(state){
+  console.log('把你的班主任找来');
+});
+
+class Subject {
+  constructor(state){
+    this.state = state;
+    this.observers = [];
+  }
+  
+  setState(state){
+    this.state = state;
+    this.observers.forEach(item => {
+      item.fn(state);
+    });
+  }
+  
+  addObserver(obs){
+    if(!this.observers.find(item => item === obs)){
+      this.observers.push(obs);
+    }
+  }
+  
+  delObserver(obs){
+    this.observers = this.observers.filter(item => item !== fn);
+  }
+}
+
+const std1 = new Subject('学习');
+std1.addObserver(teacher);
+std1.addObserver(leader);
+
+std1.setState('打游戏');
+```
+
+### 10.4 发布订阅模式
+
+#### 定义
+
+发布/订阅模式：基于一个主题/事件通道，希望接收通知的对象（称为subscriber）通过自定义事件订阅主题，被激活事件的对象（称为publisher）通过发布主题事件的方式被通知。
+
+#### 应用场景
+
+买书：去书店买书，问，没有，留下一个联系方式给店员，一但有了书，就会接到电话，触发技能去买书
+
+Vue 双向绑定中的发布订阅模式
+
+#### 代码实现
+
+```js
+class Observer {
+  constructor(){
+    this.message = {};
+  }
+  
+  on(type, fn){
+    if(!this.message[type]){
+      this.message[type] = [];
+    }
+    
+    this.message[type].push(fn);
+  }
+  
+  off(type, fn){
+    if(!fn){
+      delete this.message[type];
+      return;
+    }
+    
+    if(!this.message[type]){
+      return;
+    }
+    
+    this.message[type] = this.message[type].filter(item => item !== fn);
+  }
+  
+  emit(type){
+    if(!this.message[type]){
+      return;
+    }
+    
+    this.message[type].forEach(item => {
+      item();
+    })
+  }
+}
+
+const person1 = new Observer('hasBook', function(){
+  console.log('给订阅者打电话买书');
+});
+
+person1.on('newBook', function(){
+  console.log('出新书了，给订阅者发消息');
+});
+```
+
+### 10.5 代理模式
+
+#### 定义
+
+代理模式：为一个对象提供一个代用品或占位符，以便控制它的访问。
+
+#### 应用场景
+
+图片预加载是一种常用的技术，如果直接给某个 img 标签节点设置 src 属性， 由于图片过大或者网络不佳，图片的位置往往有段时间会是一片空白。常见的做法是先用一张 loading 图片占位，然后用异步的方式加载图片，等图片加载好了再把它填充到 img 节点里，这种 场景就很适合使用虚拟代理。
+
+### 10.6 工厂模式
+
+#### 定义
+
+工厂模式：根据不同的参数，返回不同类的实例。
+
+#### 应用场景
+
+`document.createElement` 创建 `DOM` 元素。这个方法采用的就是工厂模式，方法内部很复杂，但外部使用很简单。只需要传递标签名，这个方法就会返回对应的 `DOM` 元素。
+
+这些场景都有一些特点：使用者只需要知道产品名字就可以拿到实例，不关心创建过程。所以我们可以把复杂的过程封装在一块，更便于使用。
+
+### 10.7 适配器模式
+
+#### 定义
+
+适配器模式：用于解决兼容问题，接口/方法/数据不兼容，将其转换成访问者期望的格式进行使用。
+
+#### 应用场景
+
+场景：我们要获取通过多个接口获取列表数据，拼接在一起，在一个组件内进行展示。因历史遗留原因，这些列表数据的格式不太一样。
+
+
 
 ## 11 前端模块化
 
@@ -4057,307 +4297,86 @@ obj.time // 35
 > https://juejin.cn/post/6844903576309858318
 > https://github.com/febobo/web-interview/issues/43
 
-- 如果没有模块化，我们代码会怎样？
+#### 如果没有模块化，我们代码会怎样？
 
-  - 变量和方法不容易维护，容易污染全局作用域
+- 变量和方法不容易维护，容易污染全局作用域
 
-  - 加载资源的方式通过script标签从上到下。
+- 加载资源的方式通过script标签从上到下。
 
-  - 依赖的环境主观逻辑偏重，代码较多就会比较复杂。
+- 依赖的环境主观逻辑偏重，代码较多就会比较复杂。
 
-  - 大型项目资源难以维护，特别是多人合作的情况下，资源的引入会让人奔溃
+- 大型项目资源难以维护，特别是多人合作的情况下，资源的引入会让人奔溃
 
-  因此，需要一种将`JavaScript`程序模块化的机制，如
+因此，需要一种将`JavaScript`程序模块化的机制，如
 
-  - CommonJs (典型代表：node.js早期)
+- CommonJs (典型代表：node.js早期)
 
-  - AMD (典型代表：require.js)
+- AMD (典型代表：require.js)
 
-  - CMD (典型代表：sea.js)
+- CMD (典型代表：sea.js)
 
-  #### AMD
+#### CommonJS
 
-  `Asynchronous ModuleDefinition`（AMD），异步模块定义，采用异步方式加载模块。所有依赖模块的语句，都定义在一个回调函数中，等到模块加载完成之后，这个回调函数才会运行
+Node.js是commonJS规范的主要实践者，它有四个重要的环境变量为模块化的实现提供支持：`module`、`exports`、`require`、`global`。
 
-  ```js
-  /** main.js 入口文件/主模块 **/
-  // 首先用config()指定各模块路径和引用名
-  require.config({
-    baseUrl: "js/lib",
-    paths: {
-      "jquery": "jquery.min",  //实际路径为js/lib/jquery.min.js
-      "underscore": "underscore.min",
-    }
-  });
-  // 执行基本操作
-  require(["jquery","underscore"],function($,_){
-    // some code here
-  });
-  ```
+实际使用时，用`module.exports`定义当前模块对外输出的接口，用`require`加载模块。
 
-  #### CommonJS
 
-  `CommonJS` 是一套 `Javascript` 模块规范，用于服务端
 
-  其有如下特点：
+其有如下特点：
 
-  - 所有代码都运行在模块作用域，不会污染全局作用域
-  - 模块是同步加载的，即只有加载完成，才能执行后面的操作
-  - 模块在首次执行后就会缓存，再次加载只返回缓存结果，如果想要再次执行，可清除缓存
-  - `require`返回的值是被输出的值的拷贝，模块内部的变化也不会影响这个值
+- 所有代码都运行在模块作用域，不会污染全局作用域
+- 模块是同步加载的，即只有加载完成，才能执行后面的操作
+- 模块在首次执行后就会缓存，再次加载只返回缓存结果，如果想要再次执行，可清除缓存
+- `require`返回的值是被输出的值的拷贝，模块内部的变化也不会影响这个值
 
-  ```js
-  // a.js
-  module.exports={ foo , bar}
-  
-  // b.js
-  const { foo,bar } = require('./a.js')
-  ```
+#### AMD和require.js
 
-  既然存在了`AMD`以及`CommonJs`机制，`ES6`的`Module`又有什么不一样？
+AMD规范采用异步方式加载模块，模块的加载不影响它后面语句的运行。
 
-  ES6 在语言标准的层面上，实现了`Module`，即模块功能，完全可以取代 `CommonJS `和 `AMD `规范，成为浏览器和服务器通用的模块解决方案
+所有依赖这个模块的语句，都定义在一个回调函数中，等到加载完成之后，这个回调函数才会运行。
 
-  `CommonJS` 和` AMD` 模块，都只能在运行时确定这些东西。比如，`CommonJS `模块就是对象，输入时必须查找对象属性
+这里介绍用require.js实现AMD规范的模块化：用`require.config()`指定引用路径等，用`define()`定义模块，用`require()`加载模块。
 
-  ```js
-  // CommonJS模块
-  let { stat, exists, readfile } = require('fs');
-  
-  // 等同于
-  let _fs = require('fs');
-  let stat = _fs.stat;
-  let exists = _fs.exists;
-  let readfile = _fs.readfile;
-  ```
-
-  `ES6`设计思想是尽量的静态化，使得编译时就能确定模块的依赖关系，以及输入和输出的变量
-
-  ```js
-  // ES6模块
-  import { stat, exists, readFile } from 'fs';
-  ```
 
-  上述代码，只加载3个方法，其他方法不加载，即 `ES6` 可以在编译时就完成模块加载
 
-  由于编译加载，使得静态分析成为可能。包括现在流行的`typeScript`也是依靠静态分析实现功能
+引用模块的时候，我们将模块名放在`[]`中作为`reqiure()`的第一参数；
 
-- **Es6 module使用**
+如果我们定义的模块本身也依赖其他模块,那就需要将它们放在`[]`中作为`define()`的第一参数。
 
-  模块功能主要由两个命令构成：
 
-  - `export`：用于规定模块的对外接口
-  - `import`：用于输入其他模块提供的功能
 
-  #### export
+require.js在申明依赖的模块时会在第一之间加载并执行模块内的代码
 
-  一个模块就是一个独立的文件，该文件内部的所有变量，外部无法获取。如果你希望外部能够读取模块内部的某个变量，就必须使用`export`关键字输出该变量
+#### CMD和sea.js
 
-  ```js
-  // profile.js
-  export var firstName = 'Michael';
-  export var lastName = 'Jackson';
-  export var year = 1958;
-  
-  或 
-  // 建议使用下面写法，这样能瞬间确定输出了哪些变量
-  var firstName = 'Michael';
-  var lastName = 'Jackson';
-  var year = 1958;
-  
-  export { firstName, lastName, year };
-  ```
-
-  输出函数或类
-
-  ```js
-  export function multiply(x, y) {
-    return x * y;
-  };
-  ```
-
-  通过`as`可以进行输出变量的重命名
-
-  ```js
-  function v1() { ... }
-  function v2() { ... }
-  
-  export {
-    v1 as streamV1,
-    v2 as streamV2,
-    v2 as streamLatestVersion
-  };
-  ```
-
-  #### import
-
-  使用`export`命令定义了模块的对外接口以后，其他 JS 文件就可以通过`import`命令加载这个模块
-
-  ```js
-  // main.js
-  import { firstName, lastName, year } from './profile.js';
-  
-  function setName(element) {
-    element.textContent = firstName + ' ' + lastName;
-  }
-  ```
-
-  同样如果想要输入变量起别名，通过`as`关键字
-
-  ```js
-  import { lastName as surname } from './profile.js';
-  ```
-
-  当加载整个模块的时候，需要用到星号`*`
-
-  ```js
-  // circle.js
-  export function area(radius) {
-    return Math.PI * radius * radius;
-  }
-  
-  export function circumference(radius) {
-    return 2 * Math.PI * radius;
-  }
-  
-  // main.js
-  import * as circle from './circle';
-  console.log(circle)   // {area:area,circumference:circumference}
-  ```
-
-  输入的变量都是只读的，不允许修改，但是如果是对象，允许修改属性
-
-  ```
-  import {a} from './xxx.js'
-  
-  a.foo = 'hello'; // 合法操作
-  a = {}; // Syntax Error : 'a' is read-only;
-  ```
-
-  不过建议即使能修改，但我们不建议。因为修改之后，我们很难差错
-
-  `import`后面我们常接着`from`关键字，`from`指定模块文件的位置，可以是相对路径，也可以是绝对路径
-
-  ```
-  import { a } from './a';
-  ```
-
-  如果只有一个模块名，需要有配置文件，告诉引擎模块的位置
-
-  ```
-  import { myMethod } from 'util';
-  ```
-
-  在编译阶段，`import`会提升到整个模块的头部，首先执行
-
-  ```
-  foo();
-  
-  import { foo } from 'my_module';
-  ```
-
-  多次重复执行同样的导入，只会执行一次
-
-  ```
-  import 'lodash';
-  import 'lodash';
-  ```
-
-  上面的情况，大家都能看到用户在导入模块的时候，需要知道加载的变量名和函数，否则无法加载
-
-  如果不需要知道变量名或函数就完成加载，就要用到`export default`命令，为模块指定默认输出
-
-  ```
-  // export-default.js
-  export default function () {
-      console.log('foo');
-  }
-  ```
-
-  加载该模块的时候，`import`命令可以为该函数指定任意名字
-
-  ```
-  // import-default.js
-  import customName from './export-default';
-  customName(); // 'foo'
-  ```
-
-#### 动态加载
-
-允许您仅在需要时动态加载模块，而不必预先加载所有模块，这存在明显的性能优势
-
-这个新功能允许您将`import()`作为函数调用，将其作为参数传递给模块的路径。 它返回一个 `promise`，它用一个模块对象来实现，让你可以访问该对象的导出
-
-```
-import('/modules/myModule.mjs')
-  .then((module) => {
-    // Do something with the module.
-  });
-```
-
-#### 复合写法
-
-如果在一个模块之中，先输入后输出同一个模块，`import`语句可以与`export`语句写在一起
-
-```
-export { foo, bar } from 'my_module';
-
-// 可以简单理解为
-import { foo, bar } from 'my_module';
-export { foo, bar };
-```
-
-同理能够搭配`as`、`*`搭配使用
-
-#### 使用场景
+CMD是另一种js模块化方案，它与AMD很类似，不同点在于：AMD 推崇依赖前置、提前执行，CMD推崇依赖就近、延迟执行。
+
+
+
+#### ES6 Module
+
+其模块功能主要由两个命令构成：`export`和`import`。
+
+`export`命令用于规定模块的对外接口，`import`命令用于输入其他模块提供的功能。
+
+
+
+使用`import`命令的时候，用户需要知道所要加载的变量名或函数名。
+
+ES6还提供了`export default`命令，为模块指定默认输出，对应的`import`语句不需要使用大括号。
+
+ES6的模块不是对象，`import`命令会被 JavaScript 引擎静态分析，在编译时就引入模块代码，而不是在代码运行时加载
+
+##### 使用场景
 
 如今，`ES6`模块化已经深入我们日常项目开发中，像`vue`、`react`项目搭建项目，组件化开发处处可见，其也是依赖模块化实现
 
-`vue`组件
 
-```
-<template>
-  <div class="App">
-      组件化开发 ---- 模块化
-  </div>
-</template>
-
-<script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
-</script>
-```
-
-`react`组件
-
-```
-function App() {
-  return (
-    <div className="App">
-		组件化开发 ---- 模块化
-    </div>
-  );
-}
-
-export default App;
-```
-
-包括完成一些复杂应用的时候，我们也可以拆分成各个模块
 
 #### **es6和CommonJS的差异**
 
-- CommonJS 模块输出的是一个值的拷贝，ES6 模块输出的是值的引用。
-- CommonJS 模块是运行时加载，ES6 模块是编译时输出接口。CommonJS 模块就是对象；即在输入时是先加载整个模块，生成一个对象，然后再从这个对象上面读取方法，这种加载称为“运行时加载”。ES6 模块不是对象，而是通过 export 命令显式指定输出的代码，import时采用静态命令的形式。即在import时可以指定加载某个输出值，而不是加载整个模块，这种加载称为“编译时加载”。
-- CommonJS 是同步导入，因为用于服务端，文件都在本地，同步导入即使卡住主线程影响也不大。而es6模块是异步导入，因为用于浏览器，需要下载文件，如果也采用同步导入会对渲染有很大影响
-
-
-
-
-
-## 12 js事件循环机制
-
-- 程序开始执行之后，主程序则开始执行 **同步任务**，碰到 **异步任务** 就把它放到任务队列中,等到同步任务全部执行完毕之后，js引擎便去查看任务队列有没有可以执行的异步任务，将异步任务转为同步任务，开始执行，执行完同步任务之后继续查看任务队列，这个过程是一直 **循环** 的，因此这个过程就是所谓的 **事件循环**，其中任务队列也被称为事件队列。通过一个任务队列，单线程的js实现了异步任务的执行，给人感觉js好像是多线程的。
+- CommonJS 模块是运行时加载，ES6 Module 是编译时输出接口；
+- CommonJS 加载的是整个模块，将所有的接口全部加载进来，ES6 Module 可以单独加载其中的某个接口；
+- CommonJS 输出是值的拷贝，ES6 Module 输出的是值的引用，被输出模块的内部的改变会影响引用的改变；
+- CommonJS `this`指向当前模块，ES6 Module `this`指向`undefined`;
